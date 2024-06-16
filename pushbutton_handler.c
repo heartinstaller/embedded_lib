@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 // Define the GPIO register addresses
 #define GPIO_START 0x00040100 // GPIO Start Address
@@ -40,6 +41,13 @@
 #define GPIO29 (1 << 29)
 #define GPIO30 (1 << 30)
 #define GPIO31 (1 << 31)
+#define GPIO_COUNT 0x20
+
+// Function prototypes
+void GPIO_Init(void);
+uint32_t Read_PushButton_Status(void);
+uint32_t Debounce_PushButton(uint32_t button_status);
+void Handle_PushButtons(void);
 
 // Function to initialize GPIO for input
 void GPIO_Init(void) {
@@ -53,11 +61,34 @@ uint32_t Read_PushButton_Status(void) {
     return (*GPIO_DATA_REG) & (GPIO17 | GPIO28 | GPIO4 | GPIO10);
 }
 
+// Function to debounce push buttons
+uint32_t Debounce_PushButton(uint32_t button_status) {
+    static uint32_t last_button_status = 0;
+    static uint32_t stable_button_status = 0;
+    static uint32_t counter = 0;
+
+    if (button_status == last_button_status) {
+        if (counter < 5) { // Arbitrary debounce delay
+            counter++;
+        } else {
+            stable_button_status = button_status;
+        }
+    } else {
+        counter = 0;
+    }
+
+    last_button_status = button_status;
+    return stable_button_status;
+}
+
 // Main function to handle push button states
 void Handle_PushButtons(void) {
     while (1) {
         // Read the status of the push buttons
         uint32_t button_status = Read_PushButton_Status();
+        
+        // Debounce the button status
+        button_status = Debounce_PushButton(button_status);
 
         // Handle each button status using switch-case
         switch (button_status) {
